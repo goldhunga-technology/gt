@@ -14,6 +14,8 @@ class OrganizationCreateSchema(BaseModel):
         self.name = self.name.strip().lower()
         return self
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class OrganizationUpdateSchema(BaseModel):
     """Schema for updating an organization."""
@@ -30,13 +32,15 @@ class OrganizationUpdateSchema(BaseModel):
             self.name = self.name.strip().lower()
         return self
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class OrganizationResponseSchema(BaseModel):
     """Schema for an organization response."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    uuid: str
     name: str
     slug: str
     owner_id: int
@@ -65,7 +69,6 @@ class OrganizationMemberResponseSchema(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
     user_id: int
     organization_id: int
     status: str
