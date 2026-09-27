@@ -305,3 +305,66 @@ class TestBelongsToOrgCheck:
         )
 
         assert result is None
+
+
+class TestAllowMultipleOrganizationsConfig:
+    def test_default_allow_multiple_organizations_is_true(self):
+        class Base(DeclarativeBase):
+            registry = registry()
+
+        user_model = create_auth_user_model(Base)
+        organizations = Organizations(
+            base=Base,
+            session_factory=async_sessionmaker[AsyncSession](),
+            user_model=user_model,
+        )
+        assert organizations.allow_multiple_organizations is True
+
+    def test_custom_allow_multiple_organizations_is_false(self):
+        class Base(DeclarativeBase):
+            registry = registry()
+
+        user_model = create_auth_user_model(Base)
+        organizations = Organizations(
+            base=Base,
+            session_factory=async_sessionmaker[AsyncSession](),
+            user_model=user_model,
+            allow_multiple_organizations=False,
+        )
+        assert organizations.allow_multiple_organizations is False
+
+    async def test_create_org_blocked_when_single_org_enforced(self, models):
+        model = models["organization_model"]
+        member_model = models["organization_member_model"]
+        service = get_organization_service(
+            session=MagicMock(),
+            model=model,
+            member_model=member_model,
+            allow_multiple_organizations=False,
+        )
+        service._repository.filter_by = AsyncMock(
+            return_value=[make_organization(models, owner_id=1)]
+        )
+
+        with pytest.raises(ConflictException) as exc:
+            await service.create_organization(name="Second Org", owner_id=1)
+
+        assert exc.value.errors is not None
+        assert exc.value.errors["code"] == "SINGLE_ORGANIZATION_LIMIT_EXCEEDED"
+
+    async def test_add_member_blocked_when_single_org_enforced(self, models):
+        model = models["organization_member_model"]
+        service = get_organization_member_service(
+            session=MagicMock(), model=model, allow_multiple_organizations=False
+        )
+        service._repository.filter_by = AsyncMock(
+            return_value=[make_member(models, user_id=2)]
+        )
+
+        with pytest.raises(ConflictException) as exc:
+            await service.add_member(
+                organization_id=2, organization_uuid="org-2-uuid", user_id=2
+            )
+
+        assert exc.value.errors is not None
+        assert exc.value.errors["code"] == "SINGLE_ORGANIZATION_LIMIT_EXCEEDED"

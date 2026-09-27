@@ -261,6 +261,23 @@ class AuthUserService[
                 internal_details=str(e),
             ) from e
 
+    async def get_users_by_ids(self, ids: list[int]) -> list[TUser]:
+        """
+        Retrieve multiple users by their internal integer ids in a single query.
+
+        Used by the boundary layer to resolve batches of members to their
+        public uuids without an N+1 lookup per member.
+        """
+        try:
+            return await self._repository.get_by_ids(ids)
+        except DomainException:
+            raise
+        except Exception as e:
+            raise DomainException(
+                error="Failed to retrieve users.",
+                internal_details=str(e),
+            ) from e
+
     async def _create_user_session(
         self,
         user_id: int,

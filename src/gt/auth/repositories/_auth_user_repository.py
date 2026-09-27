@@ -61,3 +61,19 @@ class AuthUserRepository[TUser: AuthUserModel]:
                 error="Failed to retrieve user from the database.",
                 internal_details=str(e),
             ) from e
+
+    async def get_by_ids(self, ids: list[int]) -> list[TUser]:
+        """
+        Retrieve multiple users by their internal integer ids in a single query.
+        """
+        if not ids:
+            return []
+        try:
+            stmt = select(self.model).where(self.model.id.in_(ids))
+            result = await self.session.execute(stmt)
+            return list(result.scalars().all())
+        except Exception as e:
+            raise CreateException(
+                error="Failed to retrieve users from the database.",
+                internal_details=str(e),
+            ) from e

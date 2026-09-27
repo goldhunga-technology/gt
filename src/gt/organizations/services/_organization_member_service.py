@@ -9,10 +9,7 @@ from gt.organizations.events import (
     OrganizationMemberRemovedEvent,
     OrganizationMemberUpdatedEvent,
 )
-from gt.organizations.models import (
-    OrganizationMemberModelBase,
-    TOrganizationMember,
-)
+from gt.organizations.models import OrganizationMemberModelBase, TOrganizationMember
 from gt.organizations.repositories import OrganizationMemberRepository
 
 
@@ -23,15 +20,19 @@ class OrganizationMemberService[TOrganizationMember: OrganizationMemberModelBase
         self,
         repository: OrganizationMemberRepository[TOrganizationMember],
         model: type[TOrganizationMember],
+        allow_multiple_organizations: bool = True,
     ):
         """Initialize the service with a repository and model.
 
         Args:
             repository: The OrganizationMemberRepository instance.
             model: The OrganizationMemberModel class.
+            allow_multiple_organizations: Whether users can belong to multiple
+                organizations.
         """
         self._repository = repository
         self._model = model
+        self._allow_multiple_organizations = allow_multiple_organizations
 
     async def add_member(
         self,
@@ -54,10 +55,19 @@ class OrganizationMemberService[TOrganizationMember: OrganizationMemberModelBase
             The created member instance.
 
         Raises:
-            ConflictException: If the user is already a member.
+            ConflictException: If the user is already a member or single-organization
+                limit per user is enforced.
             DomainException: On unexpected failures.
         """
         try:
+            if not self._allow_multiple_organizations:
+                existing_any = await self._repository.filter_by(user_id=user_id)
+                if existing_any:
+                    raise ConflictException(
+                        error="User can only belong to one organization.",
+                        errors={"code": "SINGLE_ORGANIZATION_LIMIT_EXCEEDED"},
+                    )
+
             existing = await self._repository.get_by(
                 organization_id=organization_id, user_id=user_id
             )
@@ -109,7 +119,10 @@ class OrganizationMemberService[TOrganizationMember: OrganizationMemberModelBase
             DomainException: On unexpected failures.
         """
         try:
-            return await self._repository.get_by(**kwargs)
+            result = await self._repository.filter_by(**kwargs)
+            if len(result) > 0:
+                return result[0]
+            return None
         except DomainException:
             raise
         except Exception as e:
@@ -225,16 +238,24 @@ class OrganizationMemberService[TOrganizationMember: OrganizationMemberModelBase
 
 
 def get_organization_member_service(
-    session: AsyncSession, model: type[TOrganizationMember]
+    session: AsyncSession,
+    model: type[TOrganizationMember],
+    allow_multiple_organizations: bool = True,
 ) -> OrganizationMemberService[TOrganizationMember]:
     """Factory function to create an OrganizationMemberService instance.
 
     Args:
         session: Async SQLAlchemy session.
         model: The OrganizationMemberModel class.
+        allow_multiple_organizations: Whether users can belong to multiple
+            organizations.
 
     Returns:
         A configured OrganizationMemberService.
     """
     repository = OrganizationMemberRepository(session=session, model=model)
-    return OrganizationMemberService(repository=repository, model=model)
+    return OrganizationMemberService(
+        repository=repository,
+        model=model,
+        allow_multiple_organizations=allow_multiple_organizations,
+    )

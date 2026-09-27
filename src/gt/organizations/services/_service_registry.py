@@ -22,10 +22,12 @@ class OrganizationServiceRegistry:
         session: AsyncSession,
         organization_model: type[OrganizationModel],
         member_model: type[OrganizationMemberModelBase],
+        allow_multiple_organizations: bool = True,
     ):
         self._session = session
         self._organization_model = organization_model
         self._member_model = member_model
+        self._allow_multiple_organizations = allow_multiple_organizations
 
     @cached_property
     def organization(self):
@@ -34,11 +36,14 @@ class OrganizationServiceRegistry:
             session=self._session,
             model=self._organization_model,
             member_model=self._member_model,
+            allow_multiple_organizations=self._allow_multiple_organizations,
         )
 
     @cached_property
     def member(self):
         """Service for organization member operations."""
         return get_organization_member_service(
-            session=self._session, model=self._member_model
+            session=self._session,
+            model=self._member_model,
+            allow_multiple_organizations=self._allow_multiple_organizations,
         )

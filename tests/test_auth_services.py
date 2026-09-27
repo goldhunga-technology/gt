@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from gt.auth.models._auth_user_model import AuthUserModel
+from gt.auth.repositories._auth_user_repository import AuthUserRepository
 from gt.auth.services._auth_email_service import AuthEmailService
 from gt.auth.services._auth_login_service import AuthLoginService
 from gt.auth.services._auth_user_onboarding_service import (
@@ -12,7 +13,7 @@ from gt.auth.services._auth_user_onboarding_service import (
     get_auth_user_onboarding_service,
 )
 from gt.auth.services._auth_user_service import AuthUserService
-from gt.exceptions import ConflictException, NotFoundException
+from gt.exceptions import ConflictException, DomainException, NotFoundException
 from gt.exceptions._base_exceptions import InvalidException
 
 T_USER_MODEL = cast("type[AuthUserModel]", MagicMock())
@@ -271,3 +272,46 @@ class TestAuthOnboardingService:
 
         with pytest.raises(InvalidException):
             await service.add_onboarding(user_id=1, theme="dark")
+
+
+class TestAuthUserServiceBatchLookup:
+    def make_service(self):
+        service = AuthUserService(
+            repository=MagicMock(spec=AuthUserRepository),
+            model=T_USER_MODEL,
+            account_service=MagicMock(),
+            session_service=MagicMock(),
+            token_service=MagicMock(),
+        )
+        return service, service._repository
+
+    async def test_get_users_by_ids_calls_repository(self):
+        service, repository = self.make_service()
+        user = MagicMock()
+        repository.get_by_ids = AsyncMock(return_value=[user])
+
+        result = await service.get_users_by_ids([1, 2])
+
+        repository.get_by_ids.assert_awaited_once_with([1, 2])
+        assert result == [user]
+
+    async def test_get_users_by_ids_converts_domain_exception(self):
+        service, repository = self.make_service()
+        repository.get_by_ids = AsyncMock(
+            side_effect=DomainException(error="boom", errors={"code": "ERR"})
+        )
+
+        with pytest.raises(DomainException) as exc:
+            await service.get_users_by_ids([1])
+
+        assert exc.value.errors is not None
+        assert exc.value.errors["code"] == "ERR"
+
+    async def test_get_users_by_ids_wraps_other_exceptions(self):
+        service, repository = self.make_service()
+        repository.get_by_ids = AsyncMock(side_effect=RuntimeError("oops"))
+
+        with pytest.raises(DomainException) as exc:
+            await service.get_users_by_ids([1])
+
+        assert "Failed to retrieve users." in exc.value.error

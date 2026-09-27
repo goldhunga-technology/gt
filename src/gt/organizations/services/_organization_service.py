@@ -23,6 +23,7 @@ class OrganizationService[TOrganization: OrganizationModel]:
         repository: OrganizationRepository[TOrganization],
         model: type[TOrganization],
         member_repository: OrganizationMemberRepository | None = None,
+        allow_multiple_organizations: bool = True,
     ):
         """Initialize the service with a repository and model.
 
@@ -31,10 +32,13 @@ class OrganizationService[TOrganization: OrganizationModel]:
             model: The OrganizationModel class.
             member_repository: An optional OrganizationMemberRepository instance
                 used to resolve organization memberships.
+            allow_multiple_organizations: Whether users can belong to/own
+                multiple organizations.
         """
         self._repository = repository
         self._model = model
         self._member_repository = member_repository
+        self._allow_multiple_organizations = allow_multiple_organizations
 
     async def create_organization(
         self,
@@ -57,10 +61,28 @@ class OrganizationService[TOrganization: OrganizationModel]:
             The created organization instance.
 
         Raises:
-            ConflictException: If an organization with the same name already exists.
+            ConflictException: If an organization with the same name already exists
+                or if single-organization limit per user is enforced.
             DomainException: On unexpected failures.
         """
         try:
+            if not self._allow_multiple_organizations:
+                owned_orgs = await self._repository.filter_by(owner_id=owner_id)
+                if owned_orgs:
+                    raise ConflictException(
+                        error="User can only belong to one organization.",
+                        errors={"code": "SINGLE_ORGANIZATION_LIMIT_EXCEEDED"},
+                    )
+                if self._member_repository is not None:
+                    member_orgs = await self._member_repository.filter_by(
+                        user_id=owner_id
+                    )
+                    if member_orgs:
+                        raise ConflictException(
+                            error="User can only belong to one organization.",
+                            errors={"code": "SINGLE_ORGANIZATION_LIMIT_EXCEEDED"},
+                        )
+
             normalized_name = name.strip().lower()
             slug = generate_slug(normalized_name)
 
@@ -256,6 +278,7 @@ def get_organization_service(
     session: AsyncSession,
     model: type[TOrganization],
     member_model: type | None = None,
+    allow_multiple_organizations: bool = True,
 ) -> OrganizationService[TOrganization]:
     """Factory function to create an OrganizationService instance.
 
@@ -264,6 +287,8 @@ def get_organization_service(
         model: The OrganizationModel class.
         member_model: An optional OrganizationMemberModel class used to resolve
             organization memberships.
+        allow_multiple_organizations: Whether users can belong to/own
+            multiple organizations.
 
     Returns:
         A configured OrganizationService.
@@ -278,4 +303,5 @@ def get_organization_service(
         repository=repository,
         model=model,
         member_repository=member_repository,
+        allow_multiple_organizations=allow_multiple_organizations,
     )

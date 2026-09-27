@@ -38,6 +38,8 @@ class Organizations:
         organization_member_model: type[TOrganizationMember] | None = None,
         organization_create_schema: type[BaseModel] | None = None,
         current_user: Callable | None = None,
+        user_service_factory: Callable | None = None,
+        allow_multiple_organizations: bool = True,
     ):
         """
         Initializes the Organizations class.
@@ -50,9 +52,19 @@ class Organizations:
             organization_member_model: An optional custom organization member model base.
             organization_create_schema: An optional custom create schema.
             current_user: A FastAPI dependency that resolves the current authenticated user.
+            user_service_factory: An optional callable receiving a session and
+                returning an object exposing a ``user`` service with
+                ``get_user_by`` and ``get_users_by_ids`` methods. It is used
+                by the member router to resolve the public ``user_uuid`` from
+                API payloads into the internal integer user id. Supply it with
+                the auth service registry factory, e.g.
+                ``user_service_factory=auth.get_services``.
+            allow_multiple_organizations: Whether users can belong to/own
+                multiple organizations (defaults to True).
         """
         self.session_factory = session_factory
         self.user_model = user_model
+        self.allow_multiple_organizations = allow_multiple_organizations
 
         ## models
         self.organization_model = create_organization_model(
@@ -74,6 +86,7 @@ class Organizations:
 
         ## dependencies
         self.current_user = current_user
+        self.user_service_factory = user_service_factory
 
         ## event bus
         self.event_bus = event_bus
@@ -114,6 +127,7 @@ class Organizations:
             session=session,
             organization_model=self.organization_model,
             member_model=self.organization_member_model,
+            allow_multiple_organizations=self.allow_multiple_organizations,
         )
 
     def get_belongs_to_org_check(self) -> OrganizationMembershipCheck:

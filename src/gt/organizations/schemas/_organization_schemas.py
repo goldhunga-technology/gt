@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -50,9 +52,14 @@ class OrganizationResponseSchema(BaseModel):
 
 
 class OrganizationMemberAddSchema(BaseModel):
-    """Schema for adding a member to an organization."""
+    """Schema for adding a member to an organization.
 
-    user_id: int
+    The externally facing identifier is the user's public ``uuid``.
+    Internally the boundary resolves it to the integer ``id`` used by the
+    services for fast indexed lookups.
+    """
+
+    user_uuid: UUID = Field(..., description="Public UUID of the user to add.")
     status: str = Field(default="active", max_length=255)
     role: str = Field(default="member", max_length=255)
 
@@ -65,11 +72,14 @@ class OrganizationMemberUpdateSchema(BaseModel):
 
 
 class OrganizationMemberResponseSchema(BaseModel):
-    """Schema for an organization member response."""
+    """Schema for an organization member response.
 
-    model_config = ConfigDict(from_attributes=True)
+    Only public uuids leave the application; integer primary keys stay
+    internal.
+    """
 
-    user_id: int
-    organization_id: int
+    uuid: str
+    user_uuid: str | None = None
+    organization_uuid: str | None = None
     status: str
     role: str
