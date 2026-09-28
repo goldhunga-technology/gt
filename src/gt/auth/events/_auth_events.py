@@ -62,6 +62,7 @@ class UserProfileUpdatedEvent(DomainEvent):
     user_uuid: str
     avatar: str | None
     avatar_bg: str
+    language: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

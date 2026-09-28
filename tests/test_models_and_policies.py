@@ -41,6 +41,19 @@ class TestAuthUserModel:
         assert make_user(models, email_verified=False).is_email_verified() is False
         assert make_user(models, email_verified=True).is_email_verified() is True
 
+    def test_language_defaults_to_en(self, models):
+        user = make_user(models)
+        assert user.language == "en"
+
+    def test_language_custom(self, models):
+        user = models["user_model"](
+            email="user@example.com",
+            full_name="Test User",
+            avatar_bg="#ffffff",
+            language="fr",
+        )
+        assert user.language == "fr"
+
 
 class TestAuthUserSessionModel:
     def test_active_session(self, models):

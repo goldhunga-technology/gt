@@ -164,6 +164,7 @@ class AuthUserService[
         full_name: str | None = None,
         avatar_bg: str | None = None,
         avatar: str | None = None,
+        language: str | None = None,
     ) -> TUser:
         """
         Update a user's profile fields and publish a profile updated event.
@@ -175,6 +176,8 @@ class AuthUserService[
                 user.avatar_bg = avatar_bg
             if avatar is not None:
                 user.avatar = avatar
+            if language is not None:
+                user.language = language
 
             updated_user = await self.update_user(user)
 
@@ -186,6 +189,7 @@ class AuthUserService[
                     user_uuid=updated_user.uuid,
                     avatar=updated_user.avatar,
                     avatar_bg=updated_user.avatar_bg,
+                    language=updated_user.language,
                 )
             )
             return updated_user
@@ -194,6 +198,34 @@ class AuthUserService[
         except Exception as e:
             raise DomainException(
                 error="Failed to update profile.",
+                internal_details=str(e),
+            ) from e
+
+    async def update_language(self, user: TUser, language: str) -> TUser:
+        """
+        Update a user's language preference and publish a profile updated event.
+        """
+        try:
+            user.language = language
+            updated_user = await self.update_user(user)
+
+            await event_bus.publish(
+                UserProfileUpdatedEvent(
+                    user_id=updated_user.id,
+                    full_name=updated_user.full_name,
+                    email=updated_user.email,
+                    user_uuid=updated_user.uuid,
+                    avatar=updated_user.avatar,
+                    avatar_bg=updated_user.avatar_bg,
+                    language=updated_user.language,
+                )
+            )
+            return updated_user
+        except DomainException:
+            raise
+        except Exception as e:
+            raise DomainException(
+                error="Failed to update language.",
                 internal_details=str(e),
             ) from e
 

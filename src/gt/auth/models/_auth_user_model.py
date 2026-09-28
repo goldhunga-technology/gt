@@ -43,6 +43,9 @@ class AuthUserModel(MappedAsDataclass):
     avatar: Mapped[str | None] = mapped_column(
         String(255), nullable=True, default=None, kw_only=True
     )
+    language: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="en", kw_only=True
+    )
 
     def is_active(self) -> bool:
         """Check if the user is active.

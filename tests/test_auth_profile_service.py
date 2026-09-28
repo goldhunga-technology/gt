@@ -73,6 +73,36 @@ class TestUpdateProfile:
         assert updated.full_name == "Test User"
         assert updated.avatar_bg == "#ffffff"
 
+    async def test_update_profile_with_language(self, models):
+        user = make_user(models)
+        service, repository, _, _ = make_user_service(user=user)
+
+        with patch(
+            "gt.auth.services._auth_user_service.event_bus.publish",
+            new=AsyncMock(),
+        ) as publish:
+            updated = await service.update_profile(user=user, language="es")
+
+        assert updated.language == "es"
+        repository.update.assert_awaited_once_with(user)
+        publish.assert_awaited_once()
+
+
+class TestUpdateLanguage:
+    async def test_update_language_success(self, models):
+        user = make_user(models)
+        service, repository, _, _ = make_user_service(user=user)
+
+        with patch(
+            "gt.auth.services._auth_user_service.event_bus.publish",
+            new=AsyncMock(),
+        ) as publish:
+            updated = await service.update_language(user=user, language="ne")
+
+        assert updated.language == "ne"
+        repository.update.assert_awaited_once_with(user)
+        publish.assert_awaited_once()
+
 
 class TestDeactivateUser:
     async def test_deactivate_already_inactive(self, models):

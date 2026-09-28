@@ -36,6 +36,24 @@ class TestCurrentUser:
         assert result is user
         auth.get_services.assert_called_once()
 
+    async def test_returns_user_with_language(self, models):
+        user = models["user_model"](
+            email="user@example.com",
+            full_name="Test User",
+            avatar_bg="#ffffff",
+            language="ne",
+        )
+        user_session = MagicMock()
+        user_session.is_active = True
+        auth = make_auth(user_session=user_session, user=user)
+
+        result = await current_user(
+            auth=auth, session=MagicMock(), session_uuid="valid-uuid"
+        )
+
+        assert result is user
+        assert result.language == "ne"
+
     async def test_raises_for_invalid_session(self):
         auth = make_auth(user_session=None)
 
