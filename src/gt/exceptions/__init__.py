@@ -2,7 +2,9 @@ from ._base_exceptions import (
     ConflictException,
     CreateException,
     DomainException,
+    InvalidException,
     NotFoundException,
+    ServerException,
     UpdateException,
 )
 from ._global_exception_handlers import add_exceptions_handler
@@ -11,7 +13,9 @@ __all__ = [
     "ConflictException",
     "CreateException",
     "DomainException",
+    "InvalidException",
     "NotFoundException",
+    "ServerException",
     "UpdateException",
     "add_exceptions_handler",
 ]

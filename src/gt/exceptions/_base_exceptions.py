@@ -133,3 +133,20 @@ class UnauthorizedException(DomainException):
     ):
         """Initialize with detail message and optional data."""
         super().__init__(error=error, internal_details=internal_details, errors=errors)
+
+
+class ServerException(DomainException):
+    """
+    Custom Exception for server error
+    """
+
+    code: str = "server_error"
+
+    def __init__(
+        self,
+        error: str = "Server Error",
+        internal_details: Any | None = None,
+        errors: Any | None = None,
+    ):
+        """Initialize with detail message and optional data."""
+        super().__init__(error=error, internal_details=internal_details, errors=errors)
