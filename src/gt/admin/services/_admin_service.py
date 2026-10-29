@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +41,7 @@ class AdminService[TAdmin: AdminModel]:
         avatar_bg: str | None = None,
         status: str = "active",
         is_onboarded: bool = False,
+        email_verified_at: datetime | None = None,
     ) -> TAdmin:
         """Register a new administrator.
 
@@ -74,6 +76,7 @@ class AdminService[TAdmin: AdminModel]:
                 avatar_bg=avatar_bg or random_avatar_color(),
                 is_onboarded=is_onboarded,
                 status=status,
+                email_verified_at=email_verified_at,
                 hashed_password=self._hash_service.hash(password),
             )
             created = await self._repository.add(admin)
