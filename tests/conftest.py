@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, registry
 
+from gt.admin.models._admin_model import create_admin_model
 from gt.auth.models._auth_user_account_model import create_auth_user_account_model
 from gt.auth.models._auth_user_model import create_auth_user_model
 from gt.auth.models._auth_user_session_model import create_auth_user_session_model
@@ -35,6 +36,7 @@ def models():
         "organization_member_model": create_organization_member_model(
             base, user_model, organization_model
         ),
+        "admin_model": create_admin_model(base),
     }
 
 
