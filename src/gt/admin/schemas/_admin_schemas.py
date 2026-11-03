@@ -25,6 +25,13 @@ class AdminRegisterSchema(BaseModel):
         return self
 
 
+class AdminLoginRequestSchema(BaseModel):
+    """Schema for administrator login request."""
+
+    email: EmailStr = Field(..., max_length=255)
+    password: str = Field(..., max_length=128)
+
+
 class AdminListQuerySchema(BaseModel):
     """Query parameters for listing administrators."""
 

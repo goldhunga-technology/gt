@@ -1,6 +1,7 @@
 from ._admin_repository import AdminRepository, TAdmin
+from ._admin_session_repository import AdminSessionRepository
 
-__all__ = ["AdminRepository", "TAdmin"]
+__all__ = ["AdminRepository", "AdminSessionRepository", "TAdmin"]
 
 
 def __getattr__(name: str):

@@ -1,6 +1,7 @@
 from ._admin_schemas import (
     AdminListQuerySchema,
     AdminListResponseSchema,
+    AdminLoginRequestSchema,
     AdminRegisterSchema,
     AdminResponseSchema,
 )
@@ -8,6 +9,7 @@ from ._admin_schemas import (
 __all__ = [
     "AdminListQuerySchema",
     "AdminListResponseSchema",
+    "AdminLoginRequestSchema",
     "AdminRegisterSchema",
     "AdminResponseSchema",
 ]

@@ -76,9 +76,10 @@ class AdminService[TAdmin: AdminModel]:
                 avatar_bg=avatar_bg or random_avatar_color(),
                 is_onboarded=is_onboarded,
                 status=status,
-                email_verified_at=email_verified_at,
                 hashed_password=self._hash_service.hash(password),
             )
+            if email_verified_at is not None:
+                admin.email_verified_at = email_verified_at
             created = await self._repository.add(admin)
 
             await event_bus.publish(
