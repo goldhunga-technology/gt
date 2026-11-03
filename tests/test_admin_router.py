@@ -9,6 +9,8 @@ from gt.admin.routers._admin_router import (
     _admin_auth_not_configured,
     create_admin_router,
 )
+from gt.admin.routers._role_router import create_role_router
+from gt.admin.seeders import DEFAULT_PERMISSIONS
 from gt.exceptions import ServerException
 
 
@@ -28,8 +30,14 @@ def make_session_factory(session):
     return factory
 
 
-def make_admin_record(*, uuid: str = "admin-uuid", email: str = "admin@example.com"):
+def make_admin_record(
+    *,
+    admin_id: int = 1,
+    uuid: str = "admin-uuid",
+    email: str = "admin@example.com",
+):
     admin = MagicMock()
+    admin.id = admin_id
     admin.uuid = uuid
     admin.email = email
     admin.full_name = "Admin User"
@@ -41,8 +49,8 @@ def make_admin_record(*, uuid: str = "admin-uuid", email: str = "admin@example.c
     return admin
 
 
-def make_services(*, admin_service):
-    return SimpleNamespace(admin=admin_service)
+def make_services(*, admin_service=None, role_service=None):
+    return SimpleNamespace(admin=admin_service, role=role_service)
 
 
 def make_admin(*, session, services, current_admin=None):
@@ -74,9 +82,12 @@ class TestAdminAuthGuard:
 
 
 class TestAdminRouter:
-    def build(self, *, admin_service, current_admin=None):
+    def build(self, *, admin_service=None, role_service=None, current_admin=None):
         session = make_session()
-        services = make_services(admin_service=admin_service)
+        services = make_services(
+            admin_service=admin_service or MagicMock(),
+            role_service=role_service,
+        )
         admin = make_admin(
             session=session,
             services=services,
@@ -92,6 +103,27 @@ class TestAdminRouter:
         assert all(
             getattr(route, "path", None) != "/register" for route in router.routes
         )
+
+    async def test_get_current_admin_profile_with_roles_and_permissions(self):
+        role_service = MagicMock()
+        superadmin_role = MagicMock()
+        superadmin_role.slug = "superadmin"
+        superadmin_role.is_active.return_value = True
+        admin_rec = make_admin_record(admin_id=1, uuid="admin-1")
+        role_service.get_admin_roles = AsyncMock(
+            return_value=(admin_rec, [superadmin_role])
+        )
+        role_service.get_permissions_for_admin = AsyncMock(return_value=["*"])
+
+        router, _ = self.build(role_service=role_service)
+        endpoint = get_endpoint(router, "GET", "/me")
+        response = await endpoint(_current_admin=admin_rec)
+
+        assert response.status_code == 200
+        parsed = parse(response)
+        assert parsed["data"]["uuid"] == "admin-1"
+        assert parsed["data"]["roles"] == ["superadmin"]
+        assert parsed["data"]["permissions"] == ["*"]
 
     async def test_list_admin_users(self):
         admin_service = MagicMock()
@@ -151,3 +183,28 @@ class TestAdminRouter:
             "limit": 20,
             "offset": 0,
         }
+
+
+class TestRoleRouter:
+    def build(self, *, role_service):
+        session = make_session()
+        services = make_services(role_service=role_service)
+        admin = make_admin(session=session, services=services)
+        router = create_role_router(admin=admin)
+        return router
+
+    async def test_list_permissions(self):
+        role_service = MagicMock()
+        role_service.list_permissions.return_value = [
+            dict(item) for item in DEFAULT_PERMISSIONS
+        ]
+        router = self.build(role_service=role_service)
+
+        endpoint = get_endpoint(router, "GET", "/permissions")
+        response = await endpoint(_current_admin=MagicMock())
+
+        assert response.status_code == 200
+        parsed = parse(response)
+        assert parsed["message"] == "Permissions retrieved successfully."
+        assert parsed["data"][0]["key"] == "*"
+        assert len(parsed["data"]) == len(DEFAULT_PERMISSIONS)

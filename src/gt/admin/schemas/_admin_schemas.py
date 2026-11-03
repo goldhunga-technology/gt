@@ -9,8 +9,8 @@ from gt.auth.schemas._auth_schemas import random_avatar_color
 class AdminRegisterSchema(BaseModel):
     """Schema for administrator registration."""
 
-    email: EmailStr = Field(..., max_length=255)
-    password: str = Field(..., min_length=8, max_length=128)
+    email: EmailStr = Field(max_length=255)
+    password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
     avatar_bg: str | None = Field(default_factory=random_avatar_color, max_length=255)
 
@@ -28,8 +28,8 @@ class AdminRegisterSchema(BaseModel):
 class AdminLoginRequestSchema(BaseModel):
     """Schema for administrator login request."""
 
-    email: EmailStr = Field(..., max_length=255)
-    password: str = Field(..., max_length=128)
+    email: EmailStr = Field(max_length=255)
+    password: str = Field(max_length=128)
 
 
 class AdminListQuerySchema(BaseModel):
@@ -57,6 +57,13 @@ class AdminResponseSchema(BaseModel):
     status: str
     email_verified_at: datetime | None
     avatar: str | None
+
+
+class AdminMeResponseSchema(AdminResponseSchema):
+    """Authenticated administrator profile including assigned roles and permissions."""
+
+    roles: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
 
 
 class AdminListResponseSchema(BaseModel):

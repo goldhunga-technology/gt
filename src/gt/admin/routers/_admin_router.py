@@ -1,9 +1,12 @@
+from typing import Annotated, Any
+
 from fastapi import APIRouter, Depends, Query, Request
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from gt.admin.schemas import (
     AdminListResponseSchema,
     AdminLoginRequestSchema,
+    AdminMeResponseSchema,
     AdminResponseSchema,
 )
 from gt.admin.settings import AdminSettings
@@ -97,13 +100,45 @@ def create_admin_router(*, admin):
         )
         return response
 
+    @router.get("/me")
+    async def get_current_admin_profile(
+        _current_admin: Annotated[Any, Depends(current_admin_dependency)],
+    ):
+        """
+        Endpoint to retrieve the currently authenticated administrator's profile,
+        assigned roles, and effective permissions.
+        """
+        roles_slugs: list[str] = []
+        permissions: list[str] = []
+        async with session_factory() as session:
+            services = admin.get_services(session)
+            role_service = getattr(services, "role", None)
+            if role_service is not None:
+                _, roles = await role_service.get_admin_roles(_current_admin.uuid)
+                roles_slugs = [role.slug for role in roles if role.is_active()]
+                permissions = await role_service.get_permissions_for_admin(
+                    _current_admin.id
+                )
+
+        base_data = AdminResponseSchema.model_validate(_current_admin).model_dump()
+        payload = AdminMeResponseSchema(
+            **base_data,
+            roles=roles_slugs,
+            permissions=permissions,
+        ).model_dump()
+
+        return cr.success(
+            data=payload,
+            message="Admin profile retrieved successfully.",
+        )
+
     @router.get("/users")
     async def list_admin_users(
-        limit: int = Query(default=20, ge=1, le=100),
-        offset: int = Query(default=0, ge=0),
-        search: str | None = Query(default=None, max_length=255),
-        status: str | None = Query(default=None, max_length=255),
-        _current_admin=Depends(current_admin_dependency),
+        _current_admin: Annotated[Any, Depends(current_admin_dependency)],
+        limit: Annotated[int, Query(ge=1, le=100)] = 20,
+        offset: Annotated[int, Query(ge=0)] = 0,
+        search: Annotated[str | None, Query(max_length=255)] = None,
+        status: Annotated[str | None, Query(max_length=255)] = None,
     ):
         """
         Endpoint to list administrators with pagination and optional filters.

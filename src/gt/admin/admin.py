@@ -5,12 +5,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from gt.admin.dependencies import current_admin as resolve_current_admin
+from gt.admin.dependencies._require_admin_policy import (
+    _build_require_admin_policy_dependency,
+)
 from gt.admin.models import (
     AdminModel,
+    AdminRoleModel,
+    RoleModel,
     TAdmin,
+    TAdminRole,
+    TRole,
     create_admin_model,
+    create_admin_role_model,
     create_admin_session_model,
+    create_role_model,
 )
+from gt.admin.policies import AdminPolicy
 from gt.admin.routers import create_admins_router
 from gt.admin.services import AdminServiceRegistry
 from gt.admin.settings import AdminSettings
@@ -30,8 +40,11 @@ class Admin:
         base: type[DeclarativeBase],
         session_factory: async_sessionmaker[AsyncSession],
         admin_model: type[TAdmin] | None = None,
+        role_model: type[TRole] | None = None,
+        admin_role_model: type[TAdminRole] | None = None,
         current_admin: Callable | None = None,
         settings: AdminSettings | None = None,
+        admin_policy: AdminPolicy | None = None,
     ):
         """
         Initializes the Admin class.
@@ -40,10 +53,15 @@ class Admin:
             base: The declarative base class (SQLAlchemy or SQLModel).
             session_factory: The application's async session factory.
             admin_model: An optional custom admin model base.
+            role_model: An optional custom role model base.
+            admin_role_model: An optional custom admin-role model base.
             current_admin: A FastAPI dependency that resolves the current
                 authenticated administrator. When omitted, the built-in
                 session-cookie dependency is used.
             settings: Optional administrator authentication settings.
+            admin_policy: Optional :class:`AdminPolicy` that defines which
+                endpoint/method combinations require a specific administrator
+                role.  If ``None``, all admin endpoints are unprotected.
         """
         self.session_factory = session_factory
 
@@ -59,6 +77,19 @@ class Admin:
             base=base,
             AdminModel=self.admin_model,
         )
+        self.role_model = create_role_model(
+            base=base,
+            model=role_model or RoleModel,
+        )
+        self.admin_role_model = create_admin_role_model(
+            base=base,
+            admin_model=self.admin_model,
+            role_model=self.role_model,
+            model=admin_role_model or AdminRoleModel,
+        )
+
+        ## authorization policy
+        self.admin_policy = admin_policy
 
         ## dependencies
         self.current_admin = current_admin
@@ -128,6 +159,9 @@ class Admin:
             session=session,
             admin_model=self.admin_model,
             admin_session_model=self.admin_session_model,
+            role_model=self.role_model,
+            admin_role_model=self.admin_role_model,
+            admin_policy=self.admin_policy,
         )
 
     async def get_db_session(self) -> AsyncGenerator[AsyncSession]:
@@ -142,6 +176,23 @@ class Admin:
         Registers administrator-related routers to the FastAPI application.
         """
         routers = create_admins_router(admin=self)
+
+        # If a policy was configured, add the policy‑check dependency to every
+        # admin route.
+        if self.admin_policy is not None:
+            policy_dep = _build_require_admin_policy_dependency(
+                self.admin_policy, admin=self
+            )
+
+            # FastAPI stores route dependencies in ``route.dependant.dependencies``.
+            for route in routers.routes:
+                dependant = getattr(route, "dependant", None)
+                if dependant is not None:
+                    dependant.dependencies = [
+                        Depends(policy_dep),
+                        *list(dependant.dependencies),
+                    ]
+
         if prefix:
             app.include_router(routers, prefix=prefix)
         else:

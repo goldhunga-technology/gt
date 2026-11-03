@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, registry
 
 from gt.admin.models._admin_model import create_admin_model
+from gt.admin.models._admin_role_model import create_admin_role_model
+from gt.admin.models._role_model import create_role_model
 from gt.auth.models._auth_user_account_model import create_auth_user_account_model
 from gt.auth.models._auth_user_model import create_auth_user_model
 from gt.auth.models._auth_user_session_model import create_auth_user_session_model
@@ -26,6 +28,9 @@ def models():
     base = _make_base()
     user_model = create_auth_user_model(base)
     organization_model = create_organization_model(base, user_model)
+    admin_model = create_admin_model(base)
+    role_model = create_role_model(base)
+    admin_role_model = create_admin_role_model(base, admin_model, role_model)
     return {
         "base": base,
         "user_model": user_model,
@@ -36,7 +41,9 @@ def models():
         "organization_member_model": create_organization_member_model(
             base, user_model, organization_model
         ),
-        "admin_model": create_admin_model(base),
+        "admin_model": admin_model,
+        "role_model": role_model,
+        "admin_role_model": admin_role_model,
     }
 
 

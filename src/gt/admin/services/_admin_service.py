@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,9 @@ from gt.auth.schemas._auth_schemas import random_avatar_color
 from gt.auth.services.hash._hash_service import HasherService
 from gt.exceptions import ConflictException, DomainException
 
+if TYPE_CHECKING:
+    from gt.admin.services._role_service import RoleService
+
 
 class AdminService[TAdmin: AdminModel]:
     """Service for managing administrator operations."""
@@ -20,6 +23,7 @@ class AdminService[TAdmin: AdminModel]:
         repository: AdminRepository[TAdmin],
         model: type[TAdmin],
         hash_service: HasherService | None = None,
+        role_service: "RoleService | None" = None,
     ):
         """Initialize the service with a repository and model.
 
@@ -27,10 +31,13 @@ class AdminService[TAdmin: AdminModel]:
             repository: The AdminRepository instance.
             model: The AdminModel class.
             hash_service: Optional password hasher. Defaults to HasherService.
+            role_service: Optional RoleService used to seed default roles and
+                assign the superadmin role when an administrator is created.
         """
         self._repository = repository
         self._model = model
         self._hash_service = hash_service or HasherService()
+        self._role_service = role_service
 
     async def register_admin(
         self,
@@ -42,8 +49,9 @@ class AdminService[TAdmin: AdminModel]:
         status: str = "active",
         is_onboarded: bool = False,
         email_verified_at: datetime | None = None,
+        role_slug: str = "superadmin",
     ) -> TAdmin:
-        """Register a new administrator.
+        """Register a new administrator, seed default roles/permissions, and assign a role.
 
         Args:
             email: The administrator's email (stored lowercase).
@@ -52,6 +60,9 @@ class AdminService[TAdmin: AdminModel]:
             avatar_bg: Optional avatar background color.
             status: The administrator status.
             is_onboarded: Whether the administrator has completed onboarding.
+            email_verified_at: Optional timestamp when email was verified.
+            role_slug: Role slug to assign to the created admin (defaults to 'superadmin'
+                with '*' permission).
 
         Returns:
             The created administrator instance.
@@ -81,6 +92,12 @@ class AdminService[TAdmin: AdminModel]:
             if email_verified_at is not None:
                 admin.email_verified_at = email_verified_at
             created = await self._repository.add(admin)
+
+            if self._role_service is not None:
+                await self._role_service.seed_default_roles_and_assign_role(
+                    admin_id=created.id,
+                    role_slug=role_slug,
+                )
 
             await event_bus.publish(
                 AdminRegisteredEvent(
@@ -170,6 +187,7 @@ def get_admin_service(
     session: AsyncSession,
     model: type[TAdmin],
     hash_service: HasherService | None = None,
+    role_service: "RoleService | None" = None,
 ) -> AdminService[TAdmin]:
     """Factory function to create an AdminService instance.
 
@@ -177,6 +195,8 @@ def get_admin_service(
         session: Async SQLAlchemy session.
         model: The AdminModel class.
         hash_service: Optional password hasher.
+        role_service: Optional RoleService instance for seeding default roles
+            and assigning superadmin on registration.
 
     Returns:
         A configured AdminService.
@@ -186,4 +206,5 @@ def get_admin_service(
         repository=repository,
         model=model,
         hash_service=hash_service,
+        role_service=role_service,
     )
