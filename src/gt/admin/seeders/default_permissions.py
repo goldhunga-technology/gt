@@ -57,6 +57,23 @@ ROLE_PERMISSIONS = [
     },
 ]
 
+ORGANIZATION_PERMISSIONS = [
+    {
+        "name": "View Organizations",
+        "key": "organization.view",
+        "description": "Permission to view organization details",
+        "category": "organization",
+        "is_system_permission": True,
+    },
+    {
+        "name": "Manage Organizations",
+        "key": "organization.manage",
+        "description": "Permission to change organization status",
+        "category": "organization",
+        "is_system_permission": True,
+    },
+]
+
 
 ## --------------------------------  Main permissions list --------------------------------- ##
 DEFAULT_PERMISSIONS = [
@@ -69,6 +86,7 @@ DEFAULT_PERMISSIONS = [
     },
     *ADMIN_PERMISSIONS,
     *ROLE_PERMISSIONS,
+    *ORGANIZATION_PERMISSIONS,
 ]
 
 
@@ -91,6 +109,9 @@ class PERMISSION_KEYS_ENUM(StrEnum):
     ROLE_MANAGE = "role.manage"
     ROLE_DELETE = "role.delete"
 
+    ORGANIZATION_VIEW = "organization.view"
+    ORGANIZATION_MANAGE = "organization.manage"
+
 
 type PERMISSION_KEYS = Literal[
     "*",
@@ -101,6 +122,8 @@ type PERMISSION_KEYS = Literal[
     "role.view",
     "role.manage",
     "role.delete",
+    "organization.view",
+    "organization.manage",
 ]
 
 VALID_PERMISSION_KEYS: frozenset[str] = frozenset(

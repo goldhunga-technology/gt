@@ -3,6 +3,7 @@ from gt.admin.seeders.default_permissions import PERMISSION_KEYS_ENUM
 EVERY_ROLE_PERMISSIONS = [
     PERMISSION_KEYS_ENUM.ADMIN_VIEW.value,
     PERMISSION_KEYS_ENUM.ROLE_VIEW.value,
+    PERMISSION_KEYS_ENUM.ORGANIZATION_VIEW.value,
 ]
 
 ## ------------------------------------ Main Default role permissions ------------------------------------ ##
@@ -17,6 +18,7 @@ DEFAULT_ROLES_PERMISSIONS: dict[str, list[str]] = {
         PERMISSION_KEYS_ENUM.ROLE_VIEW.value,
         PERMISSION_KEYS_ENUM.ROLE_MANAGE.value,
         PERMISSION_KEYS_ENUM.ROLE_DELETE.value,
+        PERMISSION_KEYS_ENUM.ORGANIZATION_MANAGE.value,
     ],
     "viewer": [],
 }

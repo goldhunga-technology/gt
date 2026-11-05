@@ -5,6 +5,7 @@ from ._organization_member_model import (
 )
 from ._organization_model import (
     OrganizationModel,
+    OrganizationStatus,
     TOrganization,
     create_organization_model,
     generate_slug,
@@ -13,6 +14,7 @@ from ._organization_model import (
 __all__ = [
     "OrganizationMemberModelBase",
     "OrganizationModel",
+    "OrganizationStatus",
     "TOrganization",
     "TOrganizationMember",
     "create_organization_member_model",

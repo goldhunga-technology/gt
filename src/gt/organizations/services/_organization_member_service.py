@@ -151,6 +151,22 @@ class OrganizationMemberService[TOrganizationMember: OrganizationMemberModelBase
                 internal_details=str(e),
             ) from e
 
+    async def count_members_by_organization_ids(
+        self, organization_ids: list[int]
+    ) -> dict[int, int]:
+        """Return member counts keyed by organization id."""
+        try:
+            return await self._repository.count_by_organization_ids(
+                organization_ids=organization_ids
+            )
+        except DomainException:
+            raise
+        except Exception as e:
+            raise DomainException(
+                error="Failed to count organization members.",
+                internal_details=str(e),
+            ) from e
+
     async def update_member(
         self,
         member: TOrganizationMember,

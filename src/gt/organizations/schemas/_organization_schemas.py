@@ -1,6 +1,9 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from gt.organizations.models._organization_model import OrganizationStatus
 
 
 class OrganizationCreateSchema(BaseModel):
@@ -37,6 +40,26 @@ class OrganizationUpdateSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class OrganizationStatusUpdateSchema(BaseModel):
+    """Schema for changing an organization's status."""
+
+    status: OrganizationStatus
+    reason: str | None = Field(default=None, max_length=1000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class OrganizationListQuerySchema(BaseModel):
+    """Query parameters for listing organizations."""
+
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+    search: str | None = Field(default=None, max_length=255)
+    status: str | None = Field(default=None, max_length=255)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class OrganizationResponseSchema(BaseModel):
     """Schema for an organization response."""
 
@@ -49,6 +72,45 @@ class OrganizationResponseSchema(BaseModel):
     status: str
     description: str | None
     logo: str | None
+    trial_ends_at: datetime | None = None
+    status_changed_at: datetime | None = None
+    status_changed_by: int | None = None
+    status_reason: str | None = None
+
+
+class OrganizationListResponseSchema(BaseModel):
+    """Paginated organization list response."""
+
+    items: list[OrganizationResponseSchema]
+    total: int
+    limit: int
+    offset: int
+
+
+class OrganizationStatsSchema(BaseModel):
+    """Aggregate organization counts."""
+
+    total: int
+    active: int
+    trial: int
+    inactive: int
+    cancelled: int
+
+
+class AdminOrganizationResponseSchema(OrganizationResponseSchema):
+    """Organization representation enriched with administrator-only details."""
+
+    member_count: int = 0
+
+
+class AdminOrganizationListResponseSchema(BaseModel):
+    """Paginated administrator organization list response with statistics."""
+
+    items: list[AdminOrganizationResponseSchema]
+    total: int
+    limit: int
+    offset: int
+    stats: OrganizationStatsSchema
 
 
 class OrganizationMemberAddSchema(BaseModel):

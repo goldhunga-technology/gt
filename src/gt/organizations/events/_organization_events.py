@@ -26,6 +26,18 @@ class OrganizationUpdatedEvent(DomainEvent):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class OrganizationStatusChangedEvent(DomainEvent):
+    """Event triggered when an organization's status changes."""
+
+    organization_id: int
+    organization_uuid: str
+    from_status: str
+    to_status: str
+    actor_id: int | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class OrganizationDeletedEvent(DomainEvent):
     """Event triggered when an organization is deleted."""
 

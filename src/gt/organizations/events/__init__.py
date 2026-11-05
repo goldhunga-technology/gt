@@ -4,6 +4,7 @@ from ._organization_events import (
     OrganizationMemberAddedEvent,
     OrganizationMemberRemovedEvent,
     OrganizationMemberUpdatedEvent,
+    OrganizationStatusChangedEvent,
     OrganizationUpdatedEvent,
 )
 
@@ -13,5 +14,6 @@ __all__ = [
     "OrganizationMemberAddedEvent",
     "OrganizationMemberRemovedEvent",
     "OrganizationMemberUpdatedEvent",
+    "OrganizationStatusChangedEvent",
     "OrganizationUpdatedEvent",
 ]

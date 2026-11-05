@@ -34,6 +34,15 @@ class OrganizationMembershipCheckImpl(OrganizationMembershipCheck):
                 errors={"code": "ORGANIZATION_REQUIRED"},
             )
 
+        organization = await services.organization.get_organization_by(
+            id=membership.organization_id
+        )
+        if not organization or not organization.is_active():
+            raise DomainException(
+                error="Organization is inactive.",
+                errors={"code": "ORGANIZATION_INACTIVE"},
+            )
+
 
 def get_organization_membership_check(organizations) -> OrganizationMembershipCheckImpl:
     """

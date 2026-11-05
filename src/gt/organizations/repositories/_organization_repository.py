@@ -1,6 +1,6 @@
 from typing import TypeVar
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gt.exceptions import CreateException
@@ -112,5 +112,55 @@ class OrganizationRepository[TOrganization: OrganizationModel]:
         except Exception as e:
             raise CreateException(
                 error="Failed to filter organizations from the database.",
+                internal_details=str(e),
+            ) from e
+
+    async def count_by_status(self) -> dict[str, int]:
+        """Return the number of organizations grouped by status."""
+        try:
+            stmt = select(self.model.status, func.count()).group_by(self.model.status)
+            result = await self.session.execute(stmt)
+            return {str(status): int(count) for status, count in result.all()}
+        except Exception as e:
+            raise CreateException(
+                error="Failed to count organizations by status.",
+                internal_details=str(e),
+            ) from e
+
+    async def paginate(
+        self,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+        search: str | None = None,
+        status: str | None = None,
+    ) -> tuple[list[TOrganization], int]:
+        """Retrieve a paginated list of organizations and the total count."""
+        try:
+            filters = []
+            if search:
+                pattern = f"%{search.strip()}%"
+                filters.append(
+                    or_(
+                        self.model.name.ilike(pattern),
+                        self.model.slug.ilike(pattern),
+                    )
+                )
+            if status:
+                filters.append(self.model.status == status)
+
+            stmt = select(self.model)
+            count_stmt = select(func.count()).select_from(self.model)
+            if filters:
+                stmt = stmt.where(*filters)
+                count_stmt = count_stmt.where(*filters)
+
+            stmt = stmt.order_by(self.model.id).limit(limit).offset(offset)
+            result = await self.session.execute(stmt)
+            total_result = await self.session.execute(count_stmt)
+            return list(result.scalars().all()), int(total_result.scalar_one())
+        except Exception as e:
+            raise CreateException(
+                error="Failed to list organizations from the database.",
                 internal_details=str(e),
             ) from e

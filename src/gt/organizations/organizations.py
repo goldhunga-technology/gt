@@ -1,8 +1,12 @@
 from collections.abc import AsyncGenerator, Callable
+from typing import TYPE_CHECKING
 
 from pydantic.main import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+
+if TYPE_CHECKING:
+    from gt.admin import Admin
 
 from gt.auth.events import event_bus
 from gt.auth.models._auth_user_model import TUser
@@ -40,6 +44,9 @@ class Organizations:
         current_user: Callable | None = None,
         user_service_factory: Callable | None = None,
         allow_multiple_organizations: bool = True,
+        default_status: str = "trial",
+        trial_days: int | None = 14,
+        admin: "Admin | None" = None,
     ):
         """
         Initializes the Organizations class.
@@ -61,10 +68,18 @@ class Organizations:
                 ``user_service_factory=auth.get_services``.
             allow_multiple_organizations: Whether users can belong to/own
                 multiple organizations (defaults to True).
+            default_status: Status assigned to newly created organizations.
+            trial_days: Number of days a trial lasts. ``None`` disables expiry.
+            admin: An optional ``Admin`` instance. When supplied, the
+                administrator organization routes are registered under
+                ``/admin/organizations``.
         """
         self.session_factory = session_factory
         self.user_model = user_model
         self.allow_multiple_organizations = allow_multiple_organizations
+        self.default_status = default_status
+        self.trial_days = trial_days
+        self.admin = admin
 
         ## models
         self.organization_model = create_organization_model(
@@ -128,6 +143,8 @@ class Organizations:
             organization_model=self.organization_model,
             member_model=self.organization_member_model,
             allow_multiple_organizations=self.allow_multiple_organizations,
+            default_status=self.default_status,
+            trial_days=self.trial_days,
         )
 
     def get_belongs_to_org_check(self) -> OrganizationMembershipCheck:
@@ -158,10 +175,23 @@ class Organizations:
         """
         Registers organization-related routers to the FastAPI application.
         """
-        from gt.organizations.routers import create_organizations_router
+        from gt.organizations.routers import (
+            create_admin_organization_router,
+            create_organizations_router,
+        )
 
         routers = create_organizations_router(organizations=self)
         if prefix:
             app.include_router(routers, prefix=prefix)
         else:
             app.include_router(routers)
+
+        if self.admin is not None:
+            admin_routers = create_admin_organization_router(
+                organizations=self,
+                admin=self.admin,
+            )
+            if prefix:
+                app.include_router(admin_routers, prefix=prefix)
+            else:
+                app.include_router(admin_routers)

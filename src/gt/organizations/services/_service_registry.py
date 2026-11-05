@@ -23,11 +23,15 @@ class OrganizationServiceRegistry:
         organization_model: type[OrganizationModel],
         member_model: type[OrganizationMemberModelBase],
         allow_multiple_organizations: bool = True,
+        default_status: str = "trial",
+        trial_days: int | None = 14,
     ):
         self._session = session
         self._organization_model = organization_model
         self._member_model = member_model
         self._allow_multiple_organizations = allow_multiple_organizations
+        self._default_status = default_status
+        self._trial_days = trial_days
 
     @cached_property
     def organization(self):
@@ -37,6 +41,8 @@ class OrganizationServiceRegistry:
             model=self._organization_model,
             member_model=self._member_model,
             allow_multiple_organizations=self._allow_multiple_organizations,
+            default_status=self._default_status,
+            trial_days=self._trial_days,
         )
 
     @cached_property

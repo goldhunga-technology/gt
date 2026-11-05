@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -7,7 +8,7 @@ from sqlalchemy.orm import DeclarativeBase, registry
 from gt.auth.models._auth_user_model import create_auth_user_model
 from gt.exceptions import ConflictException, DomainException
 from gt.organizations import Organizations
-from gt.organizations.models import generate_slug
+from gt.organizations.models import OrganizationStatus, generate_slug
 from gt.organizations.schemas import OrganizationCreateSchema
 from gt.organizations.services import (
     get_organization_member_service,
@@ -54,6 +55,24 @@ class TestOrganizationModel:
     def test_default_status_active(self, models):
         org = make_organization(models)
         assert org.status == "active"
+
+
+class TestOrganizationStatus:
+    def test_active_trial_is_usable(self, models):
+        org = make_organization(models)
+        org.status = OrganizationStatus.TRIAL.value
+        org.trial_ends_at = datetime.now(UTC) + timedelta(days=1)
+
+        assert org.effective_status() is OrganizationStatus.TRIAL
+        assert org.is_active() is True
+
+    def test_expired_trial_is_inactive(self, models):
+        org = make_organization(models)
+        org.status = OrganizationStatus.TRIAL.value
+        org.trial_ends_at = datetime.now(UTC) - timedelta(days=1)
+
+        assert org.effective_status() is OrganizationStatus.INACTIVE
+        assert org.is_active() is False
 
 
 class TestOrganizationMemberModel:
@@ -157,6 +176,100 @@ class TestOrganizationService:
         assert await service.get_organization_by_user_id(user_id=2) is None
 
 
+class TestOrganizationStatusTransitions:
+    async def test_trial_to_active(self, models):
+        service = get_organization_service(
+            session=MagicMock(), model=models["organization_model"]
+        )
+        org = make_organization(models)
+        org.status = OrganizationStatus.TRIAL.value
+        service._repository.update = AsyncMock(return_value=org)
+
+        result = await service.change_status(
+            organization=org,
+            new_status=OrganizationStatus.ACTIVE.value,
+            actor_id=1,
+            reason="Paid",
+        )
+
+        assert result.status == OrganizationStatus.ACTIVE.value
+        assert result.status_changed_by == 1
+        assert result.status_reason == "Paid"
+
+    async def test_invalid_transition_is_rejected(self, models):
+        service = get_organization_service(
+            session=MagicMock(), model=models["organization_model"]
+        )
+        org = make_organization(models)
+
+        with pytest.raises(ConflictException) as exc:
+            await service.change_status(
+                organization=org,
+                new_status=OrganizationStatus.TRIAL.value,
+            )
+
+        assert exc.value.errors is not None
+        assert exc.value.errors["code"] == "INVALID_STATUS_TRANSITION"
+
+    async def test_expire_trials_persists_inactive(self, models):
+        service = get_organization_service(
+            session=MagicMock(), model=models["organization_model"]
+        )
+        org = make_organization(models)
+        org.status = OrganizationStatus.TRIAL.value
+        org.trial_ends_at = datetime.now(UTC) - timedelta(days=1)
+        service._repository.filter_by = AsyncMock(return_value=[org])
+        service._repository.update = AsyncMock(return_value=org)
+
+        expired = await service.expire_trials()
+
+        assert expired == 1
+        assert org.status == OrganizationStatus.INACTIVE.value
+        assert org.status_reason == "Trial expired."
+
+    async def test_list_organizations(self, models):
+        service = get_organization_service(
+            session=MagicMock(), model=models["organization_model"]
+        )
+        org = make_organization(models)
+        service._repository.paginate = AsyncMock(return_value=([org], 1))
+
+        organizations, total = await service.list_organizations(limit=10)
+
+        assert organizations == [org]
+        assert total == 1
+
+    async def test_get_organization_stats(self, models):
+        service = get_organization_service(
+            session=MagicMock(), model=models["organization_model"]
+        )
+        service._repository.count_by_status = AsyncMock(
+            return_value={"active": 3, "trial": 2, "inactive": 1}
+        )
+
+        stats = await service.get_organization_stats()
+
+        assert stats == {
+            "total": 6,
+            "active": 3,
+            "trial": 2,
+            "inactive": 1,
+            "cancelled": 0,
+        }
+
+    async def test_count_members_by_organization_ids(self, models):
+        service = get_organization_member_service(
+            session=MagicMock(), model=models["organization_member_model"]
+        )
+        service._repository.count_by_organization_ids = AsyncMock(
+            return_value={1: 5, 2: 3}
+        )
+
+        counts = await service.count_members_by_organization_ids([1, 2])
+
+        assert counts == {1: 5, 2: 3}
+
+
 class TestOrganizationMemberService:
     async def test_add_member(self, models):
         model = models["organization_member_model"]
@@ -241,7 +354,7 @@ class TestOrganizationMemberService:
 
 
 class TestBelongsToOrgCheck:
-    def make_resolver(self, *, org_exists=True, membership=None):
+    def make_resolver(self, *, org_exists=True, membership=None, organization=None):
         class Base(DeclarativeBase):
             registry = registry()
 
@@ -252,10 +365,15 @@ class TestBelongsToOrgCheck:
             user_model=user_model,
         )
 
+        if organization is None:
+            organization = MagicMock()
+            organization.is_active.return_value = True
+
         services = MagicMock()
         services.organization.is_any_organization_setup = AsyncMock(
             return_value=org_exists
         )
+        services.organization.get_organization_by = AsyncMock(return_value=organization)
         services.member.get_member_by = AsyncMock(return_value=membership)
         organizations.get_services = MagicMock(return_value=services)
 
@@ -305,6 +423,22 @@ class TestBelongsToOrgCheck:
         )
 
         assert result is None
+
+    async def test_raises_when_organization_inactive(self, models):
+        member = make_member(models)
+        organization = make_organization(models)
+        organization.status = OrganizationStatus.INACTIVE.value
+        check = self.make_resolver(
+            org_exists=True, membership=member, organization=organization
+        )
+
+        with pytest.raises(DomainException) as exc:
+            await check.check_user_belongs_to_organization(
+                user=MagicMock(id=member.user_id), session=MagicMock()
+            )
+
+        assert exc.value.errors is not None
+        assert exc.value.errors["code"] == "ORGANIZATION_INACTIVE"
 
 
 class TestAllowMultipleOrganizationsConfig:
@@ -368,3 +502,33 @@ class TestAllowMultipleOrganizationsConfig:
 
         assert exc.value.errors is not None
         assert exc.value.errors["code"] == "SINGLE_ORGANIZATION_LIMIT_EXCEEDED"
+
+
+class TestAdminOrganizationRoutes:
+    def test_registers_admin_organization_routes(self):
+        from fastapi import FastAPI
+
+        from gt.admin import Admin
+
+        class Base(DeclarativeBase):
+            registry = registry()
+
+        user_model = create_auth_user_model(Base)
+        admin = Admin(
+            base=Base,
+            session_factory=async_sessionmaker[AsyncSession](),
+            current_admin=lambda: None,
+        )
+        organizations = Organizations(
+            base=Base,
+            session_factory=async_sessionmaker[AsyncSession](),
+            user_model=user_model,
+            admin=admin,
+        )
+
+        app = FastAPI()
+        organizations.init_app(app, prefix="/api/v1")
+
+        paths = set(app.openapi()["paths"])
+        assert "/api/v1/admin/organizations" in paths
+        assert "/api/v1/admin/organizations/{organization_uuid}/status" in paths

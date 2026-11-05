@@ -1,6 +1,6 @@
 from typing import TypeVar
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gt.exceptions import CreateException
@@ -96,6 +96,29 @@ class OrganizationMemberRepository[TOrganizationMember: OrganizationMemberModelB
         except Exception as e:
             raise CreateException(
                 error="Failed to filter organization members from the database.",
+                internal_details=str(e),
+            ) from e
+
+    async def count_by_organization_ids(
+        self, organization_ids: list[int]
+    ) -> dict[int, int]:
+        """Return member counts keyed by organization id."""
+        if not organization_ids:
+            return {}
+        try:
+            stmt = (
+                select(self.model.organization_id, func.count())
+                .where(self.model.organization_id.in_(organization_ids))
+                .group_by(self.model.organization_id)
+            )
+            result = await self.session.execute(stmt)
+            return {
+                int(organization_id): int(count)
+                for organization_id, count in result.all()
+            }
+        except Exception as e:
+            raise CreateException(
+                error="Failed to count organization members.",
                 internal_details=str(e),
             ) from e
 

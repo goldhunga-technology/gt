@@ -1,11 +1,22 @@
 import re
 import uuid
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import ClassVar, TypeVar, cast
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 
 from gt.auth.models._auth_user_model import TUser
+
+
+class OrganizationStatus(StrEnum):
+    """Lifecycle status of an organization."""
+
+    TRIAL = "trial"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    CANCELLED = "cancelled"
 
 
 def generate_slug(name: str) -> str:
@@ -65,14 +76,45 @@ class OrganizationModel(MappedAsDataclass):
     logo: Mapped[str | None] = mapped_column(
         String(255), nullable=True, default=None, kw_only=True
     )
+    trial_ends_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None, init=False, kw_only=True
+    )
+    status_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None, init=False, kw_only=True
+    )
+    status_changed_by: Mapped[int | None] = mapped_column(
+        nullable=True, default=None, init=False, kw_only=True
+    )
+    status_reason: Mapped[str | None] = mapped_column(
+        String(1000), nullable=True, default=None, init=False, kw_only=True
+    )
+
+    def effective_status(self, now: datetime | None = None) -> OrganizationStatus:
+        """Return the effective status, accounting for trial expiry.
+
+        A trial whose ``trial_ends_at`` has passed is reported as inactive
+        without requiring a database write.
+        """
+        status = OrganizationStatus(self.status)
+        if status is OrganizationStatus.TRIAL and self.trial_ends_at is not None:
+            current = now or datetime.now(UTC)
+            trial_ends_at = self.trial_ends_at
+            if trial_ends_at.tzinfo is None:
+                trial_ends_at = trial_ends_at.replace(tzinfo=UTC)
+            if trial_ends_at <= current:
+                return OrganizationStatus.INACTIVE
+        return status
 
     def is_active(self) -> bool:
-        """Check if the organization is active.
+        """Check if the organization is usable (active or in an unexpired trial).
 
         Returns:
-            bool: True if the organization's status is 'active', False otherwise.
+            bool: True if the effective status is 'active' or 'trial'.
         """
-        return self.status == "active"
+        return self.effective_status() in {
+            OrganizationStatus.TRIAL,
+            OrganizationStatus.ACTIVE,
+        }
 
 
 TOrganization = TypeVar("TOrganization", bound=OrganizationModel)
