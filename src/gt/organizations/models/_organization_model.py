@@ -17,6 +17,7 @@ class OrganizationStatus(StrEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     CANCELLED = "cancelled"
+    SUSPENDED = "suspended"
 
 
 def generate_slug(name: str) -> str:

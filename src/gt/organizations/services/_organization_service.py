@@ -26,16 +26,26 @@ ALLOWED_STATUS_TRANSITIONS: dict[OrganizationStatus, set[OrganizationStatus]] = 
         OrganizationStatus.ACTIVE,
         OrganizationStatus.INACTIVE,
         OrganizationStatus.CANCELLED,
+        OrganizationStatus.SUSPENDED,
     },
     OrganizationStatus.ACTIVE: {
         OrganizationStatus.INACTIVE,
         OrganizationStatus.CANCELLED,
+        OrganizationStatus.SUSPENDED,
     },
     OrganizationStatus.INACTIVE: {
         OrganizationStatus.ACTIVE,
         OrganizationStatus.CANCELLED,
+        OrganizationStatus.SUSPENDED,
     },
-    OrganizationStatus.CANCELLED: set(),
+    OrganizationStatus.CANCELLED: {
+        OrganizationStatus.ACTIVE,
+        OrganizationStatus.SUSPENDED,
+    },
+    OrganizationStatus.SUSPENDED: {
+        OrganizationStatus.ACTIVE,
+        OrganizationStatus.CANCELLED,
+    },
 }
 
 
