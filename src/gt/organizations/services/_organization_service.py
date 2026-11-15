@@ -49,7 +49,7 @@ class OrganizationService[TOrganization: OrganizationModel]:
         member_repository: OrganizationMemberRepository | None = None,
         allow_multiple_organizations: bool = True,
         default_status: str = "trial",
-        trial_days: int | None = 14,
+        trial_days: int | None = None,
     ):
         """Initialize the service with a repository and model.
 
@@ -133,8 +133,10 @@ class OrganizationService[TOrganization: OrganizationModel]:
                 logo=logo,
             )
             if resolved_status is OrganizationStatus.TRIAL and self._trial_days:
-                organization.trial_ends_at = datetime.now(UTC) + timedelta(
-                    days=self._trial_days
+                organization.trial_ends_at = (
+                    datetime.now(UTC) + timedelta(days=self._trial_days)
+                    if self._trial_days
+                    else None
                 )
             created = await self._repository.add(organization)
 
