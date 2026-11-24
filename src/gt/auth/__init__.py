@@ -1,4 +1,5 @@
 from .auth import Auth
+from .errors import AuthErrorCode
 from .routes import (
     AuthEmailRoutesConfig,
     AuthOAuthRoutesConfig,
@@ -13,6 +14,7 @@ from .routes import (
 __all__ = [
     "Auth",
     "AuthEmailRoutesConfig",
+    "AuthErrorCode",
     "AuthOAuthRoutesConfig",
     "AuthOnboardingRoutesConfig",
     "AuthPasswordRoutesConfig",

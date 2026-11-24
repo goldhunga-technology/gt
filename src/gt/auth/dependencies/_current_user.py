@@ -5,6 +5,7 @@ Current user dependency for FastAPI routes. This module provides a function to r
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gt.auth.auth import Auth
+from gt.auth.errors import AuthErrorCode
 from gt.auth.models._auth_user_model import AuthUserModel
 from gt.exceptions._base_exceptions import InvalidException
 
@@ -28,14 +29,16 @@ async def current_user(
 
     if not user_session or not user_session.is_active:
         raise InvalidException(
-            error="Invalid or expired session.", errors={"code": "SESSION_INVALID"}
+            error="Invalid or expired session.",
+            errors={"code": AuthErrorCode.SESSION_INVALID},
         )
 
     user = await services.user.get_user_by(id=user_session.user_id)
 
     if not user or not user.is_active():
         raise InvalidException(
-            error="User is inactive or does not exist.", errors={"code": "USER_INVALID"}
+            error="User is inactive or does not exist.",
+            errors={"code": AuthErrorCode.USER_INVALID},
         )
 
     return user

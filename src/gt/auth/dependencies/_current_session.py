@@ -5,6 +5,7 @@ Current session dependency function for retrieving the authenticated session.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gt.auth.auth import Auth
+from gt.auth.errors import AuthErrorCode
 from gt.exceptions._base_exceptions import InvalidException
 
 
@@ -23,7 +24,8 @@ async def current_session(
 
     if not user_session or not user_session.is_active:
         raise InvalidException(
-            error="Invalid or expired session.", errors={"code": "SESSION_INVALID"}
+            error="Invalid or expired session.",
+            errors={"code": AuthErrorCode.SESSION_INVALID},
         )
 
     return user_session

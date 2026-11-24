@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import Query
 from fastapi.requests import Request
 
+from gt.auth.errors import AuthErrorCode
 from gt.auth.routes import AuthSessionRoutesConfig
 from gt.auth.schemas._auth_session_schema import CurrentSessionResponseSchema
 from gt.response import cr
@@ -30,7 +31,7 @@ def create_session_router(*, auth, routes: AuthSessionRoutesConfig | None = None
             if not session_uuid:
                 return cr.error(
                     error="No session found.",
-                    errors={"code": "SESSION_NOT_FOUND"},
+                    errors={"code": AuthErrorCode.SESSION_NOT_FOUND},
                 )
 
             async with session_factory() as session:
@@ -42,7 +43,7 @@ def create_session_router(*, auth, routes: AuthSessionRoutesConfig | None = None
                 if not current or not current.is_active:
                     return cr.error(
                         error="Invalid or expired session.",
-                        errors={"code": "SESSION_INVALID"},
+                        errors={"code": AuthErrorCode.SESSION_INVALID},
                     )
 
             return cr.success(
@@ -69,7 +70,7 @@ def create_session_router(*, auth, routes: AuthSessionRoutesConfig | None = None
             if not session_uuid:
                 return cr.error(
                     error="No session found.",
-                    errors={"code": "SESSION_NOT_FOUND"},
+                    errors={"code": AuthErrorCode.SESSION_NOT_FOUND},
                 )
 
             async with session_factory() as session:
@@ -81,7 +82,7 @@ def create_session_router(*, auth, routes: AuthSessionRoutesConfig | None = None
                 if not current or not current.is_active:
                     return cr.error(
                         error="Invalid or expired session.",
-                        errors={"code": "SESSION_INVALID"},
+                        errors={"code": AuthErrorCode.SESSION_INVALID},
                     )
 
                 all_sessions = await user_session_service.list_sessions_by_user(

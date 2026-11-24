@@ -6,7 +6,9 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gt.admin.dependencies._current_admin import current_admin as resolve_current_admin
+from gt.admin.errors import AdminErrorCode
 from gt.admin.policies import AdminPolicy, EndpointRule
+from gt.auth.errors import AuthErrorCode
 from gt.exceptions._base_exceptions import InvalidException, UnauthorizedException
 
 
@@ -35,7 +37,7 @@ def _build_require_admin_policy_dependency(policy: AdminPolicy, *, admin):
         if not session_uuid:
             raise InvalidException(
                 error="Session UUID cookie is missing. Please log in again.",
-                errors={"code": "SESSION_MISSING"},
+                errors={"code": AuthErrorCode.SESSION_INVALID},
             )
 
         current = await resolve_current_admin(
@@ -49,7 +51,7 @@ def _build_require_admin_policy_dependency(policy: AdminPolicy, *, admin):
         if not has_role:
             raise UnauthorizedException(
                 error="Forbidden",
-                errors={"code": "ADMIN_ROLE_REQUIRED"},
+                errors={"code": AdminErrorCode.ROLE_REQUIRED},
             )
 
         return current

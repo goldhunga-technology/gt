@@ -2,7 +2,9 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gt.admin.errors import AdminErrorCode
 from gt.admin.models import AdminModel
+from gt.auth.errors import AuthErrorCode
 from gt.exceptions._base_exceptions import InvalidException
 
 
@@ -24,7 +26,7 @@ async def current_admin(
     if not admin_session or not admin_session.is_active:
         raise InvalidException(
             error="Invalid or expired session.",
-            errors={"code": "SESSION_INVALID"},
+            errors={"code": AuthErrorCode.SESSION_INVALID},
         )
 
     current = await services.admin.get_admin_by(id=admin_session.admin_id)
@@ -32,7 +34,7 @@ async def current_admin(
     if not current or not current.is_active():
         raise InvalidException(
             error="Admin is inactive or does not exist.",
-            errors={"code": "ADMIN_INVALID"},
+            errors={"code": AdminErrorCode.ADMIN_INVALID},
         )
 
     return current

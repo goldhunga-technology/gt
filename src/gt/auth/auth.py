@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
 from gt.auth.dependencies._guards._require_access_guard import require_access
+from gt.auth.errors import AuthErrorCode
 from gt.auth.models._auth_user_account_model import create_auth_user_account_model
 from gt.auth.models._auth_user_model import create_auth_user_model
 from gt.auth.models._auth_user_onboarding_model import (
@@ -188,6 +189,7 @@ class Auth[TUser: AuthUserModel]:
             if not session_uuid:
                 raise InvalidException(
                     error="Session UUID cookie is missing. Please log in again.",
+                    errors={"code": AuthErrorCode.SESSION_INVALID},
                 )
 
             return await current_user(
@@ -216,6 +218,7 @@ class Auth[TUser: AuthUserModel]:
             if not session_uuid:
                 raise InvalidException(
                     error="Session UUID cookie is missing. Please log in again.",
+                    errors={"code": AuthErrorCode.SESSION_INVALID},
                 )
 
             return await current_session(

@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gt.admin.errors import AdminErrorCode
 from gt.admin.models import AdminModel, TAdmin
 from gt.admin.models._admin_session_model import (
     AdminSessionModelBase,
@@ -68,7 +69,7 @@ class AdminLoginService[
             if not admin.is_active():
                 raise InvalidException(
                     error="Admin account is inactive.",
-                    errors={"code": "ADMIN_INACTIVE"},
+                    errors={"code": AdminErrorCode.ADMIN_INACTIVE},
                 )
 
             session = await self._session_service.create_session(

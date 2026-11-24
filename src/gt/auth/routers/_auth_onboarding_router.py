@@ -3,6 +3,7 @@ from fastapi.requests import Request
 from starlette.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 
 from gt.auth.dependencies._guards._require_access_guard import require_access
+from gt.auth.errors import AuthErrorCode
 from gt.auth.routes import AuthOnboardingRoutesConfig
 from gt.response import cr
 
@@ -43,6 +44,7 @@ def create_onboarding_router(*, auth, routes: AuthOnboardingRoutesConfig | None 
             if not session_uuid:
                 return cr.error(
                     error="No active session found.",
+                    errors={"code": AuthErrorCode.SESSION_INVALID},
                     status_code=HTTP_400_BAD_REQUEST,
                 )
 
@@ -56,6 +58,7 @@ def create_onboarding_router(*, auth, routes: AuthOnboardingRoutesConfig | None 
                     if not user_session or not user_session.is_active:
                         return cr.error(
                             error="Invalid or expired session.",
+                            errors={"code": AuthErrorCode.SESSION_INVALID},
                             status_code=HTTP_400_BAD_REQUEST,
                         )
 

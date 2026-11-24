@@ -1,6 +1,7 @@
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gt.auth.errors import AuthErrorCode
 from gt.auth.policies import UserPolicies
 from gt.exceptions._base_exceptions import DomainException, UnauthorizedException
 
@@ -36,7 +37,7 @@ def require_access(
         if needs_user and user is None:
             raise UnauthorizedException(
                 error="Authentication required",
-                errors={"code": "UNAUTHENTICATED"},
+                errors={"code": AuthErrorCode.UNAUTHENTICATED},
             )
 
         if email_verified and user is not None:
@@ -49,7 +50,7 @@ def require_access(
             if auth._belongs_to_org_check is None:
                 raise DomainException(
                     error="Organization is not set up.",
-                    errors={"code": "ORGANIZATION_NOT_SET_UP"},
+                    errors={"code": AuthErrorCode.ORGANIZATION_NOT_SET_UP},
                 )
             await auth._belongs_to_org_check.check_user_belongs_to_organization(
                 user=user, session=session

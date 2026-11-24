@@ -25,6 +25,7 @@ from gt.admin.routers import create_admins_router
 from gt.admin.routes import AdminRoutesConfig
 from gt.admin.services import AdminServiceRegistry
 from gt.admin.settings import AdminSettings
+from gt.auth.errors import AuthErrorCode
 from gt.auth.events import event_bus
 from gt.exceptions._base_exceptions import InvalidException
 from gt.routing import resolve_module_routes
@@ -148,7 +149,7 @@ class Admin:
             if not session_uuid:
                 raise InvalidException(
                     error="Session UUID cookie is missing. Please log in again.",
-                    errors={"code": "SESSION_MISSING"},
+                    errors={"code": AuthErrorCode.SESSION_INVALID},
                 )
 
             return await resolve_current_admin(

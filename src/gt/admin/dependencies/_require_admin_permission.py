@@ -4,7 +4,9 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gt.admin.dependencies._current_admin import current_admin
+from gt.admin.errors import AdminErrorCode
 from gt.admin.seeders.default_permissions import PERMISSION_KEYS
+from gt.auth.errors import AuthErrorCode
 from gt.exceptions._base_exceptions import (
     UnauthorizedException,
 )
@@ -16,7 +18,7 @@ def _resolve_session_uuid(request: Request, admin) -> str:
     if not session_uuid:
         raise UnauthorizedException(
             error="Authentication required.",
-            errors={"code": "UNAUTHENTICATED"},
+            errors={"code": AuthErrorCode.UNAUTHENTICATED},
         )
     return session_uuid
 
@@ -48,7 +50,7 @@ def require_admin_role(*slugs: str, admin, any_of: bool = True):
         if not allowed:
             raise UnauthorizedException(
                 error="You do not have the required role.",
-                errors={"code": "ROLE_REQUIRED"},
+                errors={"code": AdminErrorCode.ROLE_REQUIRED},
             )
 
         return current
@@ -88,7 +90,7 @@ def require_admin_permission(
         if not allowed:
             raise UnauthorizedException(
                 error="You do not have the required permission.",
-                errors={"code": "PERMISSION_DENIED"},
+                errors={"code": AdminErrorCode.PERMISSION_DENIED},
             )
 
         return current

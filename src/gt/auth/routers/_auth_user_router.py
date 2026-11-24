@@ -1,6 +1,7 @@
 from fastapi.requests import Request
 from starlette.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST
 
+from gt.auth.errors import AuthErrorCode
 from gt.auth.routes import AuthUserRoutesConfig
 from gt.auth.schemas._auth_schemas import AuthLoginRequestSchema
 from gt.ip import IPService
@@ -113,7 +114,9 @@ def create_user_router(*, auth, routes: AuthUserRoutesConfig | None = None):
             session_uuid = request.cookies.get("session_uuid")
             if not session_uuid:
                 return cr.error(
-                    error="No active session found.", status_code=HTTP_400_BAD_REQUEST
+                    error="No active session found.",
+                    errors={"code": AuthErrorCode.SESSION_INVALID},
+                    status_code=HTTP_400_BAD_REQUEST,
                 )
 
             async with session_factory() as session:

@@ -1,3 +1,4 @@
+from gt.auth.errors import AuthErrorCode
 from gt.auth.models._auth_user_model import AuthUserModel
 from gt.exceptions._base_exceptions import DomainException
 
@@ -14,7 +15,7 @@ class UserPolicies[TUser: AuthUserModel]:
         """
         if not user.is_email_verified():
             raise DomainException(
-                errors={"code": "EMAIL_UNVERIFIED"},
+                errors={"code": AuthErrorCode.EMAIL_UNVERIFIED},
                 error="Email address is not verified. Please verify your email to access this feature.",
             )
 
@@ -25,6 +26,6 @@ class UserPolicies[TUser: AuthUserModel]:
         """
         if not user.is_onboarded:
             raise DomainException(
-                errors={"code": "ONBOARDING_REQUIRED"},
+                errors={"code": AuthErrorCode.ONBOARDING_REQUIRED},
                 error="User has not completed onboarding. Please complete the onboarding process to access this feature.",
             )

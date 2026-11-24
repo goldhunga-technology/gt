@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gt.auth.errors import AuthErrorCode
 from gt.auth.models._auth_user_model import TUser
 from gt.auth.models._auth_user_session_model import AuthUserSessionModelBase
 from gt.auth.models._auth_user_tokens_model import AuthUserTokensModelBase
@@ -237,7 +238,7 @@ class AuthUserService[
             if not user.is_active():
                 raise ConflictException(
                     error="User is already deactivated.",
-                    errors={"code": "USER_ALREADY_DEACTIVATED"},
+                    errors={"code": AuthErrorCode.USER_ALREADY_DEACTIVATED},
                 )
 
             if password:

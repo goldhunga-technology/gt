@@ -3,6 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query, Request
 from starlette.status import HTTP_400_BAD_REQUEST
 
+from gt.admin.errors import AdminErrorCode
 from gt.admin.routes import AdminCoreRoutesConfig
 from gt.admin.schemas import (
     AdminListResponseSchema,
@@ -12,6 +13,7 @@ from gt.admin.schemas import (
 )
 from gt.admin.settings import AdminSettings
 from gt.admin.uow import AdminUOW
+from gt.auth.errors import AuthErrorCode
 from gt.exceptions import ServerException
 from gt.ip import IPService
 from gt.response import cr
@@ -22,7 +24,7 @@ def _admin_auth_not_configured():
     """Dependency used when the host has not supplied a current_admin resolver."""
     raise ServerException(
         error="Admin authentication is not configured.",
-        errors={"code": "ADMIN_AUTH_NOT_CONFIGURED"},
+        errors={"code": AdminErrorCode.ADMIN_AUTH_NOT_CONFIGURED},
     )
 
 
@@ -88,7 +90,9 @@ def create_admin_router(*, admin, routes: AdminCoreRoutesConfig | None = None):
             session_uuid = request.cookies.get(settings.session_cookie_name)
             if not session_uuid:
                 return cr.error(
-                    error="No active session found.", status_code=HTTP_400_BAD_REQUEST
+                    error="No active session found.",
+                    errors={"code": AuthErrorCode.SESSION_INVALID},
+                    status_code=HTTP_400_BAD_REQUEST,
                 )
 
             async with session_factory() as session:

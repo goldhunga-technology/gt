@@ -3,6 +3,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Query
 from starlette.status import HTTP_201_CREATED
 
+from gt.admin.errors import AdminErrorCode
 from gt.admin.routes import AdminRoleRoutesConfig
 from gt.admin.schemas._role_schemas import (
     AdminRoleAssignSchema,
@@ -22,7 +23,7 @@ def _admin_auth_not_configured():
     """Dependency used when the host has not supplied a current_admin resolver."""
     raise ServerException(
         error="Admin authentication is not configured.",
-        errors={"code": "ADMIN_AUTH_NOT_CONFIGURED"},
+        errors={"code": AdminErrorCode.ADMIN_AUTH_NOT_CONFIGURED},
     )
 
 

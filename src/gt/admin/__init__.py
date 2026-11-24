@@ -4,6 +4,7 @@ from .dependencies import (
     require_admin_permission,
     require_admin_role,
 )
+from .errors import AdminErrorCode, AuthErrorCode
 from .events import AdminRegisteredEvent
 from .models import (
     AdminModel,
@@ -85,6 +86,7 @@ __all__ = [
     "VALID_PERMISSION_KEYS",
     "Admin",
     "AdminCoreRoutesConfig",
+    "AdminErrorCode",
     "AdminListQuerySchema",
     "AdminListResponseSchema",
     "AdminLoginRequestSchema",
@@ -109,6 +111,7 @@ __all__ = [
     "AdminSessionService",
     "AdminSettings",
     "AdminUOW",
+    "AuthErrorCode",
     "EndpointRule",
     "PermissionResponseSchema",
     "RoleCreateSchema",

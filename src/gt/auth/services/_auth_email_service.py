@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gt.auth.errors import AuthErrorCode
 from gt.auth.events import UserEmailVerifiedEvent, event_bus
 from gt.auth.events._auth_events import UserEmailVerificationResentEvent
 from gt.auth.models._auth_user_model import AuthUserModel, TUser
@@ -43,7 +44,7 @@ class AuthEmailService[TUser: AuthUserModel, TToken: AuthUserTokensModelBase]:
             if user.is_email_verified():
                 raise ConflictException(
                     error="Email is already verified.",
-                    errors={"code": "EMAIL_ALREADY_VERIFIED"},
+                    errors={"code": AuthErrorCode.EMAIL_ALREADY_VERIFIED},
                 )
 
             token_record = await self._token_service.get_token_by(
@@ -108,7 +109,7 @@ class AuthEmailService[TUser: AuthUserModel, TToken: AuthUserTokensModelBase]:
             if user.is_email_verified():
                 raise ConflictException(
                     error="Email is already verified.",
-                    errors={"code": "EMAIL_ALREADY_VERIFIED"},
+                    errors={"code": AuthErrorCode.EMAIL_ALREADY_VERIFIED},
                 )
 
             await self._token_service.delete_tokens_by(
