@@ -17,10 +17,12 @@ from gt.auth.models._auth_user_onboarding_model import (
 )
 from gt.auth.models._auth_user_session_model import create_auth_user_session_model
 from gt.auth.models._auth_user_tokens_model import create_auth_user_tokens_model
+from gt.auth.routes import AuthRoutesConfig
 from gt.auth.schemas._auth_onboarding_schemas import AuthOnboardingRegisterSchema
 from gt.auth.schemas._auth_schemas import AuthUserRegisterSchema
 from gt.auth.settings import AuthSettings
 from gt.exceptions._base_exceptions import InvalidException
+from gt.routing import resolve_module_routes
 
 from .events import event_bus
 from .models import AuthUserModel, AuthUserOnboardingModelBase
@@ -93,15 +95,24 @@ class Auth[TUser: AuthUserModel]:
         self._policies: dict[str, Any] = {}
         self._belongs_to_org_check: Callable | None = None
 
-    def init_app(self, app: FastAPI, prefix: str | None = None):
+    def init_app(
+        self,
+        app: FastAPI,
+        prefix: str | None = None,
+        routes: AuthRoutesConfig | bool | None = None,
+    ):
         """
         Initializes the FastAPI application with authentication routes and dependencies.
 
         Args:
             app: The FastAPI application.
             prefix: An optional path prefix prepended to every auth route.
+            routes: Optional route registration configuration. Pass ``False``
+                or ``AuthRoutesConfig.disabled()`` to skip registering all auth
+                routes, or an :class:`AuthRoutesConfig` instance to enable or
+                disable specific router groups and endpoints.
         """
-        self._register_routers(app, prefix=prefix)
+        self._register_routers(app, prefix=prefix, routes=routes)
         self._register_exceptions(app)
         self._register_middlewares(app)
 
@@ -268,11 +279,19 @@ class Auth[TUser: AuthUserModel]:
 
     ## ----------------------------------------------- Internal Methods ----------------------------------------------- ##
 
-    def _register_routers(self, app: FastAPI, prefix: str | None = None):
+    def _register_routers(
+        self,
+        app: FastAPI,
+        prefix: str | None = None,
+        routes: AuthRoutesConfig | bool | None = None,
+    ):
         """
         Registers authentication-related routers to the FastAPI application.
         """
-        routers = create_auth_router(auth=self)
+        route_config = resolve_module_routes(routes, config_cls=AuthRoutesConfig)
+        routers = create_auth_router(auth=self, routes=route_config)
+        if not routers.routes:
+            return
         if prefix:
             app.include_router(routers, prefix=prefix)
         else:

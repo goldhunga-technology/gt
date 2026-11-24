@@ -22,10 +22,12 @@ from gt.admin.models import (
 )
 from gt.admin.policies import AdminPolicy
 from gt.admin.routers import create_admins_router
+from gt.admin.routes import AdminRoutesConfig
 from gt.admin.services import AdminServiceRegistry
 from gt.admin.settings import AdminSettings
 from gt.auth.events import event_bus
 from gt.exceptions._base_exceptions import InvalidException
+from gt.routing import resolve_module_routes
 
 
 class Admin:
@@ -97,15 +99,24 @@ class Admin:
         ## event bus
         self.event_bus = event_bus
 
-    def init_app(self, app, prefix: str | None = None):
+    def init_app(
+        self,
+        app,
+        prefix: str | None = None,
+        routes: AdminRoutesConfig | bool | None = None,
+    ):
         """
         Initializes the FastAPI application with administrator routes.
 
         Args:
             app: The FastAPI application.
             prefix: An optional path prefix prepended to every admin route.
+            routes: Optional route registration configuration. Pass ``False``
+                or ``AdminRoutesConfig.disabled()`` to skip registering all
+                admin routes, or an :class:`AdminRoutesConfig` instance to
+                enable or disable specific router groups and endpoints.
         """
-        self._register_routers(app, prefix=prefix)
+        self._register_routers(app, prefix=prefix, routes=routes)
         self._register_exceptions(app)
 
     def on(self, event_type: type):
@@ -171,11 +182,19 @@ class Admin:
         async with self.session_factory() as session:
             yield session
 
-    def _register_routers(self, app, prefix: str | None = None):
+    def _register_routers(
+        self,
+        app,
+        prefix: str | None = None,
+        routes: AdminRoutesConfig | bool | None = None,
+    ):
         """
         Registers administrator-related routers to the FastAPI application.
         """
-        routers = create_admins_router(admin=self)
+        route_config = resolve_module_routes(routes, config_cls=AdminRoutesConfig)
+        routers = create_admins_router(admin=self, routes=route_config)
+        if not routers.routes:
+            return
 
         # If a policy was configured, add the policy‑check dependency to every
         # admin route.

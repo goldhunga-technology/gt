@@ -24,6 +24,12 @@ from .repositories import (
     OrganizationMemberRepository,
     OrganizationRepository,
 )
+from .routes import (
+    AdminOrganizationRoutesConfig,
+    OrganizationMemberRoutesConfig,
+    OrganizationRoutesConfig,
+    OrganizationsRoutesConfig,
+)
 from .schemas import (
     AdminOrganizationListResponseSchema,
     AdminOrganizationResponseSchema,
@@ -49,6 +55,7 @@ from .services import (
 __all__ = [
     "AdminOrganizationListResponseSchema",
     "AdminOrganizationResponseSchema",
+    "AdminOrganizationRoutesConfig",
     "OrganizationCreateSchema",
     "OrganizationCreatedEvent",
     "OrganizationDeletedEvent",
@@ -60,6 +67,7 @@ __all__ = [
     "OrganizationMemberRemovedEvent",
     "OrganizationMemberRepository",
     "OrganizationMemberResponseSchema",
+    "OrganizationMemberRoutesConfig",
     "OrganizationMemberService",
     "OrganizationMemberUpdateSchema",
     "OrganizationMemberUpdatedEvent",
@@ -67,6 +75,7 @@ __all__ = [
     "OrganizationModel",
     "OrganizationRepository",
     "OrganizationResponseSchema",
+    "OrganizationRoutesConfig",
     "OrganizationService",
     "OrganizationServiceRegistry",
     "OrganizationStatsSchema",
@@ -76,6 +85,7 @@ __all__ = [
     "OrganizationUpdateSchema",
     "OrganizationUpdatedEvent",
     "Organizations",
+    "OrganizationsRoutesConfig",
     "create_organization_member_model",
     "create_organization_model",
     "generate_slug",

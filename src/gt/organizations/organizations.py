@@ -22,8 +22,10 @@ from gt.organizations.models import (
     create_organization_member_model,
     create_organization_model,
 )
+from gt.organizations.routes import OrganizationsRoutesConfig
 from gt.organizations.schemas import OrganizationCreateSchema
 from gt.organizations.services._service_registry import OrganizationServiceRegistry
+from gt.routing import resolve_module_routes
 
 
 class Organizations:
@@ -106,15 +108,24 @@ class Organizations:
         ## event bus
         self.event_bus = event_bus
 
-    def init_app(self, app, prefix: str | None = None):
+    def init_app(
+        self,
+        app,
+        prefix: str | None = None,
+        routes: OrganizationsRoutesConfig | bool | None = None,
+    ):
         """
         Initializes the FastAPI application with organization routes.
 
         Args:
             app: The FastAPI application.
             prefix: An optional path prefix prepended to every organization route.
+            routes: Optional route registration configuration. Pass ``False``
+                or ``OrganizationsRoutesConfig.disabled()`` to skip registering
+                all organization routes, or an :class:`OrganizationsRoutesConfig`
+                instance to enable or disable specific router groups and endpoints.
         """
-        self._register_routers(app, prefix=prefix)
+        self._register_routers(app, prefix=prefix, routes=routes)
 
     def on(self, event_type: type):
         """
@@ -171,7 +182,12 @@ class Organizations:
         async with self.session_factory() as session:
             yield session
 
-    def _register_routers(self, app, prefix: str | None = None):
+    def _register_routers(
+        self,
+        app,
+        prefix: str | None = None,
+        routes: OrganizationsRoutesConfig | bool | None = None,
+    ):
         """
         Registers organization-related routers to the FastAPI application.
         """
@@ -180,18 +196,27 @@ class Organizations:
             create_organizations_router,
         )
 
-        routers = create_organizations_router(organizations=self)
-        if prefix:
-            app.include_router(routers, prefix=prefix)
-        else:
-            app.include_router(routers)
+        route_config = resolve_module_routes(
+            routes, config_cls=OrganizationsRoutesConfig
+        )
+
+        routers = create_organizations_router(organizations=self, routes=route_config)
+        if routers.routes:
+            if prefix:
+                app.include_router(routers, prefix=prefix)
+            else:
+                app.include_router(routers)
 
         if self.admin is not None:
-            admin_routers = create_admin_organization_router(
-                organizations=self,
-                admin=self.admin,
-            )
-            if prefix:
-                app.include_router(admin_routers, prefix=prefix)
-            else:
-                app.include_router(admin_routers)
+            admin_routes = route_config.resolve_admin()
+            if admin_routes.any_enabled():
+                admin_routers = create_admin_organization_router(
+                    organizations=self,
+                    admin=self.admin,
+                    routes=admin_routes,
+                )
+                if admin_routers.routes:
+                    if prefix:
+                        app.include_router(admin_routers, prefix=prefix)
+                    else:
+                        app.include_router(admin_routers)

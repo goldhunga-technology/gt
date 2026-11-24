@@ -27,6 +27,11 @@ from .repositories import (
     AdminSessionRepository,
     RoleRepository,
 )
+from .routes import (
+    AdminCoreRoutesConfig,
+    AdminRoleRoutesConfig,
+    AdminRoutesConfig,
+)
 from .schemas import (
     AdminListQuerySchema,
     AdminListResponseSchema,
@@ -79,6 +84,7 @@ __all__ = [
     "ROLE_PERMISSIONS",
     "VALID_PERMISSION_KEYS",
     "Admin",
+    "AdminCoreRoutesConfig",
     "AdminListQuerySchema",
     "AdminListResponseSchema",
     "AdminLoginRequestSchema",
@@ -93,7 +99,9 @@ __all__ = [
     "AdminRoleAssignSchema",
     "AdminRoleModel",
     "AdminRoleRepository",
+    "AdminRoleRoutesConfig",
     "AdminRolesResponseSchema",
+    "AdminRoutesConfig",
     "AdminService",
     "AdminServiceRegistry",
     "AdminSessionModelBase",
